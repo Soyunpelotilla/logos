@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'logos/**'
+      - 'agenda/**'
 
 permissions:
   contents: write
@@ -18,11 +19,11 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Detectar logos cambiados
+      - name: Detectar archivos cambiados
         id: changes
         run: |
           echo "files<<EOF" >> $GITHUB_OUTPUT
-          git diff --name-only HEAD^ HEAD -- 'logos/*' >> $GITHUB_OUTPUT
+          git diff --name-only HEAD^ HEAD -- 'logos/*' 'agenda/*' >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Purgar en jsDelivr
@@ -36,7 +37,7 @@ jobs:
 
       - name: Actualizar version.json
         run: |
-          CHANGED=$(git diff --name-only HEAD^ HEAD -- 'logos/*' | jq -R . | jq -s .)
+          CHANGED=$(git diff --name-only HEAD^ HEAD -- 'logos/*' 'agenda/*' | jq -R . | jq -s .)
           echo "{\"v\":\"$(date +%s)\",\"changed\":$CHANGED}" > version.json
 
       - name: Commit version.json
