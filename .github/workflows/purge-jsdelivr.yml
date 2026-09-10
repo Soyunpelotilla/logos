@@ -6,8 +6,6 @@ on:
     paths:
       - 'logos/**'
       - 'agenda/**'
-    paths-ignore:
-      - 'version.json'
 
 permissions:
   contents: write
@@ -45,7 +43,6 @@ jobs:
           git add version.json
           
           if git commit -m "chore: actualizar version.json [skip ci]"; then
-            # Sincronizar cambios remotos antes de subir para evitar rechazados (non-fast-forward)
             git pull --rebase origin main
             git push
           fi
