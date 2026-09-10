@@ -6,6 +6,8 @@ on:
     paths:
       - 'logos/**'
       - 'agenda/**'
+    paths-ignore:
+      - 'version.json'
 
 permissions:
   contents: write
@@ -19,32 +21,31 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Detectar logos cambiados
-        id: changes
+      - name: Purgar en jsDelivr y actualizar version.json
         run: |
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          git diff --name-only HEAD^ HEAD -- logos/ agenda/ >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Obtenemos los archivos modificados en logos/ y agenda/
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- logos/ agenda/)
 
-      - name: Purgar en jsDelivr
-        run: |
-          while IFS= read -r file; do
-            [ -z "$file" ] && continue
-            url="https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$file"
-            echo "Purgando: $url"
-            curl -s "$url" > /dev/null
-          done <<< "${{ steps.changes.outputs.files }}"
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No hay archivos relevantes para purgar."
+            exit 0
+          fi
 
-      - name: Actualizar version.json
-        run: |
-          CHANGED=$(git diff --name-only HEAD^ HEAD -- logos/ agenda/ | jq -R . | jq -s .)
-          echo "{\"v\":\"$(date +%s)\",\"changed\":$CHANGED}" > version.json
+          # 1. Purgar en jsDelivr en paralelo
+          echo "$CHANGED_FILES" | xargs -I {} -P 5 curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/{}" > /dev/null
 
-      - name: Commit version.json
+          # 2. Generar el nuevo version.json
+          JSON_CHANGED=$(echo "$CHANGED_FILES" | jq -R . | jq -s .)
+          echo "{\"v\":\"$(date +%s)\",\"changed\":$JSON_CHANGED}" > version.json
+
+      - name: Commit y Push de version.json
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.json
-          git commit -m "Actualizar version" || echo "Nada que commitear"
-          git pull --rebase origin main
-          git push
+          
+          if git commit -m "chore: actualizar version.json [skip ci]"; then
+            # Sincronizar cambios remotos antes de subir para evitar rechazados (non-fast-forward)
+            git pull --rebase origin main
+            git push
+          fi
