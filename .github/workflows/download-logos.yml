@@ -15,26 +15,29 @@ jobs:
       - name: Descargar imagenes
         run: |
           mkdir -p logos
-          while IFS= read -r url; do
-            [ -z "$url" ] && continue
+          mkdir -p agenda
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            carpeta=$(echo "$line" | cut -d'|' -f1)
+            url=$(echo "$line" | cut -d'|' -f2)
             nombre=$(basename "$url")
-            echo "Descargando $nombre"
-            curl -sL --fail "$url" -o "logos/$nombre" || echo "FALLO: $url"
+            echo "Descargando $nombre en $carpeta"
+            curl -sL --fail "$url" -o "$carpeta/$nombre" || echo "FALLO: $url"
           done < urls.txt
 
       - name: Commit y push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add logos
+          git add logos agenda
           git commit -m "Descargar logos" || echo "Nada que commitear"
           git push
 
       - name: Purgar cache de jsDelivr
         run: |
-          for file in logos/*; do
+          for file in logos/* agenda/*; do
             nombre=$(basename "$file")
-            url="https://purge.jsdelivr.net/gh/${{ github.repository }}@main/logos/$nombre"
+            url="https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$file"
             echo "Purgando: $url"
             curl -s "$url" > /dev/null
           done
