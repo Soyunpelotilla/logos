@@ -31,13 +31,5 @@ jobs:
           git config user.email "actions@github.com"
           git add logos agenda
           git commit -m "Descargar logos" || echo "Nada que commitear"
+          git pull --rebase origin main
           git push
-
-      - name: Purgar cache de jsDelivr
-        run: |
-          for file in logos/* agenda/*; do
-            nombre=$(basename "$file")
-            url="https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$file"
-            echo "Purgando: $url"
-            curl -s "$url" > /dev/null
-          done
